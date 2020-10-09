@@ -32,7 +32,7 @@ PROGRAM                = tartarus
 EXTRA_CFLAGS           = -fdata-sections -ffunction-sections -fpermissive
 
 # The extra linker options, e.g. "-lmysqlclient -lz"
-EXTRA_LDFLAGS          = -lncurses
+EXTRA_LDFLAGS          = -lncurses -lwiringPi
 
 # Specify the include dirs, e.g. "-I/usr/include/mysql -I./include -I/usr/include -I/usr/local/include".
 INCLUDE                = -I./inc
