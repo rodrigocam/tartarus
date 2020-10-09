@@ -50,6 +50,7 @@ void Arduino::send_package(RequestPackage package, size_t package_size) {
 
 void Arduino::receive_package(ResponsePackage* response, size_t response_size) {
     const int read_size = read(serial_fd, response->bytes, response_size);
+    fprintf(stderr, "saiu\n");
 
     if(read_size < 0) {
         perror("Failed to receive package, error number %d: \n");
@@ -69,9 +70,11 @@ float Arduino::read_float(unsigned char command, unsigned char* auth_key) {
     package->data.cmd = command;
     package->data.auth = (unsigned char*)malloc(4);
     memcpy(package->data.auth, auth_key, 4);
-
+    
+    fprintf(stderr, "sending\n");
     Arduino::send_package(*package, sizeof(package->bytes));
     sleep(1);
+    fprintf(stderr, "receiveing\n");
     Arduino::receive_package(response, sizeof(float));
 
     return response->as_float;
