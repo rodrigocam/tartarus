@@ -5,8 +5,7 @@
 
 #include <wiringPi.h>
 #include <pthread.h>
-
-#include <update_threads.h>
+#include <curses.h>
 
 #include <iostream>
 #include <unistd.h>
@@ -26,6 +25,7 @@ static unsigned char AUTH[4] =  {1,3,9,9};
 
 static int HISTERESE = 4;
 
+volatile float REFERENCE_TEMPERATURE = 0;
 volatile float INTERNAL_TEMPERATURE = 0;
 volatile float AMBIENT_TEMPERATURE = 0;
 volatile float POTENTIOMETER_REFERENCE = 0;
@@ -42,9 +42,7 @@ void* potentiometer_thread(void* arg) {
 
 void* internal_sensor_thread(void* arg) {
     Arduino* arduino = (Arduino*)arg;
-
     while(1) {
-        /* fprintf(stderr, "internal sensor thread\n"); */
         INTERNAL_TEMPERATURE = arduino->read_internal_temperature(AUTH);
         sleep(1);
     }
@@ -54,7 +52,6 @@ void* ambient_sensor_thread(void* arg) {
     AmbientSensor* ambient_sensor = (AmbientSensor*)arg;
     
     while(1) {
-        /* fprintf(stderr, "ambient sensor thread\n"); */
         AMBIENT_TEMPERATURE = ambient_sensor->read_temperature();
         sleep(1);
     }
@@ -77,10 +74,10 @@ void* csv_thread(void* arg) {
 
 
         fprintf(f, CSV_FORMAT,
-                INTERNAL_TEMPERATURE, AMBIENT_TEMPERATURE, POTENTIOMETER_REFERENCE, 
-                time_stamp.tm_mday, time_stamp.tm_mon + 1,
-                time_stamp.tm_year + 1900, time_stamp.tm_hour,
-                time_stamp.tm_min, time_stamp.tm_sec
+            INTERNAL_TEMPERATURE, AMBIENT_TEMPERATURE, POTENTIOMETER_REFERENCE, 
+            time_stamp.tm_mday, time_stamp.tm_mon + 1,
+            time_stamp.tm_year + 1900, time_stamp.tm_hour,
+            time_stamp.tm_min, time_stamp.tm_sec
         );
 
         sleep(2);
@@ -104,17 +101,38 @@ int main(void) {
     pthread_t lcd_tid;
     pthread_t csv_tid;
 
-    pthread_create(&potentiometer_tid, NULL, potentiometer_thread, (void *)&arduino);
+    /* pthread_create(&potentiometer_tid, NULL, potentiometer_thread, (void *)&arduino); */
     pthread_create(&internal_sensor_tid, NULL, internal_sensor_thread, (void *)&arduino);
     pthread_create(&ambient_sensor_tid, NULL, ambient_sensor_thread, (void *)&ambient_sensor);
     pthread_create(&lcd_tid, NULL, lcd_thread, (void*)&lcd);
     pthread_create(&csv_tid, NULL, csv_thread, NULL);
 
+    /* Initialize ncurses */
+    int row, col;
+    /* initscr(); */
+    /* noecho(); */
+    /* nodelay(stdscr, TRUE); */
+    /* cbreak(); */
+    /* getmaxyx(stdscr, row, col); */
+    /* curs_set(0); */
+
+    /* WINDOW *temperature_window = newwin(10, 40, row/2-10, col/2-20); */
+    /* box(temperature_window, 0, 0); */
+
     while(1) {
-        /* std::cout << "Potenciometer: " << POTENTIOMETER_REFERENCE << std::endl; */
-        sleep(2);
+        if(INTERNAL_TEMPERATURE < REFERENCE_TEMPERATURE - HISTERESE) {
+            resistor.turn_on();
+            cooler.turn_off();
+        } else if(INTERNAL_TEMPERATURE > REFERENCE_TEMPERATURE + HISTERESE) {
+            resistor.turn_off();
+            cooler.turn_on();
+        }
+        
+        /* mvwprintw(temperature_window, 2, 5, "Internal Temperature: %.2f", INTERNAL_TEMPERATURE); */
+        /* mvwprintw(temperature_window, 6, 5, "Ambient Temperature: %.2f", AMBIENT_TEMPERATURE); */
+
+        /* wrefresh(temperature_window); */
     }
 
-    /* cooler.turn_on(); */
     return 0;
 }

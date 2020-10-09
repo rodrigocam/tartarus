@@ -6,7 +6,7 @@
 typedef union {
     struct {
         unsigned char cmd;
-        unsigned char* auth;
+        unsigned char auth[4];
     } data;
     unsigned char bytes[5];
 } RequestPackage;
@@ -26,7 +26,7 @@ class Arduino {
 
     private:
         int serial_fd;
-        void send_package(RequestPackage package, size_t package_size);
+        void send_package(RequestPackage* package, size_t package_size);
         void receive_package(ResponsePackage* response, size_t response_size);
         float read_float(unsigned char command, unsigned char* auth_key);
 };
