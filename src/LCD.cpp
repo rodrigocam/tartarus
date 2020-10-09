@@ -21,11 +21,11 @@ void LCD::write(float internal_temperature, float ambient_temperature, float ref
     lcdLoc(file_descriptor, 0x80);
 
     char line1_buffer[20];
-    sprintf(line1_buffer, "TI: %.2f, TE: %0.2f", internal_temperature, ambient_temperature);
+    sprintf(line1_buffer, "TI:%.1f TE:%.1f", internal_temperature, ambient_temperature);
     typeln(file_descriptor, line1_buffer);
 
     lcdLoc(file_descriptor, 0xC0);
     char line2_buffer[20];
-    sprintf(line2_buffer, "TR: %.2f", reference_temperature);
+    sprintf(line2_buffer, "TR:%.1f", reference_temperature);
     typeln(file_descriptor, line2_buffer);
 }
