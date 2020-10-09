@@ -71,10 +71,7 @@ float Arduino::read_float(unsigned char command, unsigned char* auth_key) {
     
     Arduino::send_package(package, sizeof(package->bytes));
     sleep(1);
-    fprintf(stderr, "aqqqqqqq\n");
     Arduino::receive_package(response, sizeof(float));
-
-    fprintf(stderr, "float %f\n", response->as_float);
 
     return response->as_float;
 }

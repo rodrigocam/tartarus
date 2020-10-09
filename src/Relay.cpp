@@ -5,7 +5,7 @@
 Relay::Relay(int n_pin) {
     pin = n_pin;
     pinMode(pin, OUTPUT);
-    on = false;
+    Relay::turn_off();
 }
 
 Relay::~Relay(){
@@ -27,5 +27,13 @@ void Relay::_switch() {
         Relay::turn_off();
     } else {
         Relay::turn_on();
+    }
+}
+
+char* Relay::status() {
+    if(on) {
+        return "On";
+    } else {
+        return "Off";
     }
 }
