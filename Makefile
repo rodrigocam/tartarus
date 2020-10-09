@@ -29,7 +29,7 @@ PROGRAM                = tartarus
 #CC                    = $(CXX)
 
 # The extra pre-processor and compiler options; applies to both C and C++ compiling as well as LD. 
-EXTRA_CFLAGS           = -fdata-sections -ffunction-sections
+EXTRA_CFLAGS           = -fdata-sections -ffunction-sections -fpermissive
 
 # The extra linker options, e.g. "-lmysqlclient -lz"
 EXTRA_LDFLAGS          = -lncurses
