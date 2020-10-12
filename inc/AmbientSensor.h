@@ -21,7 +21,7 @@ void delay_us(uint32_t period, void *intf_ptr);
 
 class AmbientSensor {
     public:
-        AmbientSensor(char* bus, unsigned char device_addr);
+        AmbientSensor(const char* bus, unsigned char device_addr);
         ~AmbientSensor();
         float read_temperature();
 

@@ -19,7 +19,7 @@ typedef union {
 
 class Arduino {
     public:
-        Arduino(char* bus);
+        Arduino(const char* bus);
         ~Arduino();
         float read_potentiometer(unsigned char* auth_key);
         float read_internal_temperature(unsigned char* auth_key);

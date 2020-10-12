@@ -39,7 +39,7 @@ void delay_us(uint32_t period, void *intf_ptr) {
     usleep(period);
 }
 
-AmbientSensor::AmbientSensor(char* bus, unsigned char device_addr) {
+AmbientSensor::AmbientSensor(const char* bus, unsigned char device_addr) {
     id.dev_addr = device_addr;
 
     int8_t result = BME280_OK;

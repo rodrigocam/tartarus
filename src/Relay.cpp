@@ -30,10 +30,6 @@ void Relay::_switch() {
     }
 }
 
-char* Relay::status() {
-    if(on) {
-        return "On";
-    } else {
-        return "Off";
-    }
+bool Relay::status() {
+    return on;
 }

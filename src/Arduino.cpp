@@ -9,7 +9,7 @@
 
 #include <Arduino.h>
 
-Arduino::Arduino(char* bus) {
+Arduino::Arduino(const char* bus) {
     struct termios options;
 
     serial_fd = -1;
