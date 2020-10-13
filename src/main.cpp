@@ -120,8 +120,9 @@ void* input_thread(void* _arg) {
         box(temperature_window, 0, 0);
         box(status_window, 0, 0);
         
-        mvwprintw(menu_window, 2, 5, "P - Switch potentiometer state");
-        mvwprintw(menu_window, 4, 5, "I - Insert desired temperature");
+        mvwprintw(menu_window, 1, 5, "P - Switch potentiometer state");
+        mvwprintw(menu_window, 2, 5, "I - Insert desired temperature");
+        mvwprintw(menu_window, 3, 5, "H - Insert desired histerese");
         
         key_pressed = getch();
        
@@ -134,6 +135,12 @@ void* input_thread(void* _arg) {
                 break;
             case 'p':
                 POTENTIOMETER_STATUS = !POTENTIOMETER_STATUS;
+                break;
+            case 'h':
+                echo();
+                mvwprintw(menu_window, 6, 5, "Histerese value: ");
+                wscanw(menu_window, "%f", &HISTERESE);
+                wclear(menu_window);
                 break;
             default:
                 echo();
@@ -154,6 +161,8 @@ void* input_thread(void* _arg) {
         wrefresh(menu_window); 
         wrefresh(temperature_window);
         wrefresh(status_window);
+        
+        napms(1000 / 60);
     }
 }
 
@@ -173,6 +182,12 @@ int main(void) {
     pthread_t csv_tid;
     pthread_t input_tid;
 
+    /* Initialize ncurses */
+    initscr();
+    nodelay(stdscr, TRUE);
+    cbreak();
+    curs_set(0);
+
     pthread_create(&potentiometer_tid, NULL, potentiometer_thread, (void *)&arduino);
     pthread_create(&internal_sensor_tid, NULL, internal_sensor_thread, (void *)&arduino);
     pthread_create(&ambient_sensor_tid, NULL, ambient_sensor_thread, (void *)&ambient_sensor);
@@ -180,14 +195,7 @@ int main(void) {
     pthread_create(&csv_tid, NULL, csv_thread, NULL);
     pthread_create(&input_tid, NULL, input_thread, NULL);
 
-    /* Initialize ncurses */
-    initscr();
-    nodelay(stdscr, TRUE);
-    cbreak();
-    curs_set(0);
-
     while(1) {
-        
         if(cooler.status()) {
             COOLER_STATUS = "On ";
         } else {
