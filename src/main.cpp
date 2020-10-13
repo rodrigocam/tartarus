@@ -3,12 +3,12 @@
 #include <Relay.h>
 #include <LCD.h>
 
+#include <iostream>
+#include <string>
+
 #include <wiringPi.h>
 #include <pthread.h>
 #include <curses.h>
-
-#include <iostream>
-#include <string>
 
 #include <unistd.h>
 #include <time.h>
@@ -25,7 +25,7 @@
 
 #define CSV_FORMAT "%f, %f, %f, %02d/%02d/%02d:%02d:%02d:%02d\n"
 
-static unsigned char AUTH[4] =  {1,3,9,9};
+static unsigned char AUTH[4] =  {1, 3, 9, 9};
 
 static int HISTERESE = 4;
 
@@ -40,6 +40,73 @@ static std::string COOLER_STATUS = "Off";
 static std::string RESISTOR_STATUS = "Off";
 
 pthread_mutex_t ARDUINO_LOCK;
+
+void* potentiometer_thread(void* arg);
+void* internal_sensor_thread(void* arg);
+void* ambient_sensor_thread(void* arg);
+void* lcd_thread(void* arg);
+void* csv_thread(void* arg);
+void* input_thread(void* arg);
+
+int main(void) {
+    wiringPiSetupGpio();
+    
+    Arduino arduino = Arduino(UART_BUS);
+    AmbientSensor ambient_sensor = AmbientSensor(I2C_BUS, I2C_DEVICE_ADDR);
+    Relay cooler = Relay(COOLER_PIN);
+    Relay resistor = Relay(RESISTOR_PIN);
+    LCD lcd = LCD(0x27);
+
+    pthread_t potentiometer_tid;
+    pthread_t internal_sensor_tid;
+    pthread_t ambient_sensor_tid;
+    pthread_t lcd_tid;
+    pthread_t csv_tid;
+    pthread_t input_tid;
+
+    /* Initialize ncurses */
+    initscr();
+    nodelay(stdscr, TRUE);
+    cbreak();
+    curs_set(0);
+
+    pthread_create(&potentiometer_tid, NULL, potentiometer_thread, (void *)&arduino);
+    pthread_create(&internal_sensor_tid, NULL, internal_sensor_thread, (void *)&arduino);
+    pthread_create(&ambient_sensor_tid, NULL, ambient_sensor_thread, (void *)&ambient_sensor);
+    pthread_create(&lcd_tid, NULL, lcd_thread, (void*)&lcd);
+    pthread_create(&csv_tid, NULL, csv_thread, NULL);
+    pthread_create(&input_tid, NULL, input_thread, NULL);
+
+    while(1) {
+        if(cooler.status()) {
+            COOLER_STATUS = "On ";
+        } else {
+            COOLER_STATUS = "Off";
+        }
+
+        if(resistor.status()) {
+            RESISTOR_STATUS = "On ";
+        } else {
+            RESISTOR_STATUS = "Off";
+        }
+
+        if(POTENTIOMETER_STATUS) {
+            REFERENCE_TEMPERATURE = POTENTIOMETER_REFERENCE;
+        } else {
+            REFERENCE_TEMPERATURE = USER_INPUT;
+        }
+
+        if(INTERNAL_TEMPERATURE < REFERENCE_TEMPERATURE - HISTERESE) {
+            resistor.turn_on();
+            cooler.turn_off();
+        } else if(INTERNAL_TEMPERATURE > REFERENCE_TEMPERATURE + HISTERESE) {
+            resistor.turn_off();
+            cooler.turn_on();
+        }
+    }
+
+    return 0;
+}
 
 void* potentiometer_thread(void* arg) {
     Arduino* arduino = (Arduino*)arg;
@@ -81,7 +148,7 @@ void* lcd_thread(void* arg) {
     }
 }
 
-void* csv_thread(void* _arg) {
+void* csv_thread(void* arg) {
     FILE *f = fopen("log.csv", "a");
     
     while(1) {
@@ -102,7 +169,7 @@ void* csv_thread(void* _arg) {
     fclose(f);
 }
 
-void* input_thread(void* _arg) {
+void* input_thread(void* arg) {
     int row, col;
     getmaxyx(stdscr, row, col);
     
@@ -164,64 +231,4 @@ void* input_thread(void* _arg) {
         
         napms(1000 / 60);
     }
-}
-
-int main(void) {
-    wiringPiSetupGpio();
-    
-    Arduino arduino = Arduino(UART_BUS);
-    AmbientSensor ambient_sensor = AmbientSensor(I2C_BUS, I2C_DEVICE_ADDR);
-    Relay cooler = Relay(COOLER_PIN);
-    Relay resistor = Relay(RESISTOR_PIN);
-    LCD lcd = LCD(0x27);
-
-    pthread_t potentiometer_tid;
-    pthread_t internal_sensor_tid;
-    pthread_t ambient_sensor_tid;
-    pthread_t lcd_tid;
-    pthread_t csv_tid;
-    pthread_t input_tid;
-
-    /* Initialize ncurses */
-    initscr();
-    nodelay(stdscr, TRUE);
-    cbreak();
-    curs_set(0);
-
-    pthread_create(&potentiometer_tid, NULL, potentiometer_thread, (void *)&arduino);
-    pthread_create(&internal_sensor_tid, NULL, internal_sensor_thread, (void *)&arduino);
-    pthread_create(&ambient_sensor_tid, NULL, ambient_sensor_thread, (void *)&ambient_sensor);
-    pthread_create(&lcd_tid, NULL, lcd_thread, (void*)&lcd);
-    pthread_create(&csv_tid, NULL, csv_thread, NULL);
-    pthread_create(&input_tid, NULL, input_thread, NULL);
-
-    while(1) {
-        if(cooler.status()) {
-            COOLER_STATUS = "On ";
-        } else {
-            COOLER_STATUS = "Off";
-        }
-
-        if(resistor.status()) {
-            RESISTOR_STATUS = "On ";
-        } else {
-            RESISTOR_STATUS = "Off";
-        }
-
-        if(POTENTIOMETER_STATUS) {
-            REFERENCE_TEMPERATURE = POTENTIOMETER_REFERENCE;
-        } else {
-            REFERENCE_TEMPERATURE = USER_INPUT;
-        }
-
-        if(INTERNAL_TEMPERATURE < REFERENCE_TEMPERATURE - HISTERESE) {
-            resistor.turn_on();
-            cooler.turn_off();
-        } else if(INTERNAL_TEMPERATURE > REFERENCE_TEMPERATURE + HISTERESE) {
-            resistor.turn_off();
-            cooler.turn_on();
-        }
-    }
-
-    return 0;
 }
