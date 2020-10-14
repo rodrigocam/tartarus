@@ -25,6 +25,8 @@
 
 #define CSV_FORMAT "%f, %f, %f, %02d/%02d/%02d:%02d:%02d:%02d\n"
 
+static bool RUNNING = true;
+
 static unsigned char AUTH[4] =  {1, 3, 9, 9};
 
 static int HISTERESE = 4;
@@ -41,12 +43,14 @@ static std::string RESISTOR_STATUS = "Off";
 
 pthread_mutex_t ARDUINO_LOCK;
 
-void* potentiometer_thread(void* arg);
-void* internal_sensor_thread(void* arg);
-void* ambient_sensor_thread(void* arg);
-void* lcd_thread(void* arg);
-void* csv_thread(void* arg);
-void* input_thread(void* arg);
+void* potentiometer_thread(void*);
+void* internal_sensor_thread(void*);
+void* ambient_sensor_thread(void*);
+void* lcd_thread(void*);
+void* csv_thread(void*);
+void* input_thread(void*);
+
+void sighandler(int);
 
 int main(void) {
     wiringPiSetupGpio();
@@ -77,7 +81,9 @@ int main(void) {
     pthread_create(&csv_tid, NULL, csv_thread, NULL);
     pthread_create(&input_tid, NULL, input_thread, NULL);
 
-    while(1) {
+    signal(SIGINT, sighandler);
+
+    while(RUNNING) {
         if(cooler.status()) {
             COOLER_STATUS = "On ";
         } else {
@@ -97,61 +103,76 @@ int main(void) {
         }
 
         if(INTERNAL_TEMPERATURE < REFERENCE_TEMPERATURE - HISTERESE) {
+            // Increasing temperature
             resistor.turn_on();
             cooler.turn_off();
         } else if(INTERNAL_TEMPERATURE > REFERENCE_TEMPERATURE + HISTERESE) {
-            resistor.turn_off();
+            // Decreasing temperature
             cooler.turn_on();
+            resistor.turn_off();
         }
     }
-
+    
+    endwin();
     return 0;
+}
+
+void sighandler(int signum) {
+    RUNNING = false;
 }
 
 void* potentiometer_thread(void* arg) {
     Arduino* arduino = (Arduino*)arg;
 
-    while(1) {
+    while(RUNNING) {
         pthread_mutex_lock(&ARDUINO_LOCK);
         POTENTIOMETER_REFERENCE = arduino->read_potentiometer(AUTH);
         pthread_mutex_unlock(&ARDUINO_LOCK);
         sleep(1);
     }
+
+    return NULL;
 }
 
 void* internal_sensor_thread(void* arg) {
     Arduino* arduino = (Arduino*)arg;
     
-    while(1) {
+    while(RUNNING) {
         pthread_mutex_lock(&ARDUINO_LOCK);
         INTERNAL_TEMPERATURE = arduino->read_internal_temperature(AUTH);
         pthread_mutex_unlock(&ARDUINO_LOCK);
         sleep(1);
     }
+
+    return NULL;
 }
 
 void* ambient_sensor_thread(void* arg) {
     AmbientSensor* ambient_sensor = (AmbientSensor*)arg;
     
-    while(1) {
+    while(RUNNING) {
         AMBIENT_TEMPERATURE = ambient_sensor->read_temperature();
         sleep(1);
     }
+    
+    return NULL;
 }
 
 void* lcd_thread(void* arg) {
     LCD* lcd = (LCD*)arg;
     
-    while(1) {
+    while(RUNNING) {
         lcd->write(INTERNAL_TEMPERATURE, AMBIENT_TEMPERATURE, POTENTIOMETER_REFERENCE);
         sleep(2);
     }
+    
+    return NULL;
 }
 
 void* csv_thread(void* arg) {
     FILE *f = fopen("log.csv", "a");
     
-    while(1) {
+    while(RUNNING) {
         time_t t = time(NULL);
         struct tm time_stamp = *localtime(&t);
 
@@ -167,6 +188,7 @@ void* csv_thread(void* arg) {
     }
 
     fclose(f);
+    return NULL;
 }
 
 void* input_thread(void* arg) {
@@ -181,7 +203,7 @@ void* input_thread(void* arg) {
     
     int key_pressed;
     
-    while(1) {
+    while(RUNNING) {
         noecho();
         box(menu_window, 0, 0);
         box(temperature_window, 0, 0);
@@ -210,25 +232,30 @@ void* input_thread(void* arg) {
                 wclear(menu_window);
                 break;
             default:
-                echo();
-                mvwprintw(temperature_window, 2, 5, "Internal Temperature: %.2f", INTERNAL_TEMPERATURE);
-                mvwprintw(temperature_window, 4, 5, "Ambient Temperature: %.2f", AMBIENT_TEMPERATURE);
-                mvwprintw(temperature_window, 6, 5, "Reference Temperature: %.2f", REFERENCE_TEMPERATURE);
-
-                if(POTENTIOMETER_STATUS) {
-                    mvwprintw(status_window, 2, 5, "Potentiometer: %s", "On ");
-                } else {
-                    mvwprintw(status_window, 2, 5, "Potentiometer: %s", "Off");
-                }
-                mvwprintw(status_window, 4, 5, "Cooler: %s", COOLER_STATUS.c_str());
-                mvwprintw(status_window, 6, 5, "Resistor: %s", RESISTOR_STATUS.c_str());
                 break;
         }
+        
+        mvwprintw(temperature_window, 2, 5, "Internal Temperature: %.2f", INTERNAL_TEMPERATURE);
+        mvwprintw(temperature_window, 4, 5, "Ambient Temperature: %.2f", AMBIENT_TEMPERATURE);
+        mvwprintw(temperature_window, 6, 5, "Reference Temperature: %.2f", REFERENCE_TEMPERATURE);
+
+        if(POTENTIOMETER_STATUS) {
+            mvwprintw(status_window, 2, 5, "Potentiometer: %s", "On ");
+        } else {
+            mvwprintw(status_window, 2, 5, "Potentiometer: %s", "Off");
+        }
+
+        mvwprintw(status_window, 4, 5, "Cooler: %s", COOLER_STATUS.c_str());
+        mvwprintw(status_window, 6, 5, "Resistor: %s", RESISTOR_STATUS.c_str());
         
         wrefresh(menu_window); 
         wrefresh(temperature_window);
         wrefresh(status_window);
-        
+       
+        // 60 fps
         napms(1000 / 60);
     }
+    
+    endwin();
+    return NULL;
 }
