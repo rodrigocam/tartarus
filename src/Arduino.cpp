@@ -70,7 +70,7 @@ float Arduino::read_float(unsigned char command, unsigned char* auth_key) {
     memcpy(package->data.auth, auth_key, 4);
     
     Arduino::send_package(package, sizeof(package->bytes));
-    sleep(2);
+    sleep(0.1);
     Arduino::receive_package(response, sizeof(float));
 
     return response->as_float;

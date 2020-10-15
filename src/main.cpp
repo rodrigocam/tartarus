@@ -128,7 +128,7 @@ void* potentiometer_thread(void* arg) {
         pthread_mutex_lock(&ARDUINO_LOCK);
         POTENTIOMETER_REFERENCE = arduino->read_potentiometer(AUTH);
         pthread_mutex_unlock(&ARDUINO_LOCK);
-        sleep(1);
+        sleep(0.4);
     }
 
     return NULL;
@@ -141,7 +141,7 @@ void* internal_sensor_thread(void* arg) {
         pthread_mutex_lock(&ARDUINO_LOCK);
         INTERNAL_TEMPERATURE = arduino->read_internal_temperature(AUTH);
         pthread_mutex_unlock(&ARDUINO_LOCK);
-        sleep(1);
+        sleep(0.4);
     }
 
     return NULL;
@@ -152,7 +152,7 @@ void* ambient_sensor_thread(void* arg) {
     
     while(RUNNING) {
         AMBIENT_TEMPERATURE = ambient_sensor->read_temperature();
-        sleep(1);
+        sleep(0.4);
     }
     
     return NULL;
@@ -163,7 +163,7 @@ void* lcd_thread(void* arg) {
     
     while(RUNNING) {
         lcd->write(INTERNAL_TEMPERATURE, AMBIENT_TEMPERATURE, REFERENCE_TEMPERATURE);
-        sleep(2);
+        sleep(1);
     }
     
     return NULL;
@@ -228,7 +228,7 @@ void* input_thread(void* arg) {
             case 'h':
                 echo();
                 mvwprintw(menu_window, 6, 5, "Histerese value: ");
-                wscanw(menu_window, "%f", &HISTERESE);
+                wscanw(menu_window, "%d", &HISTERESE);
                 wclear(menu_window);
                 break;
             default:
@@ -238,6 +238,7 @@ void* input_thread(void* arg) {
         mvwprintw(temperature_window, 2, 5, "Internal Temperature: %.2f", INTERNAL_TEMPERATURE);
         mvwprintw(temperature_window, 4, 5, "Ambient Temperature: %.2f", AMBIENT_TEMPERATURE);
         mvwprintw(temperature_window, 6, 5, "Reference Temperature: %.2f", REFERENCE_TEMPERATURE);
+        mvwprintw(temperature_window, 8, 5, "Histerese: %d", HISTERESE);
 
         if(POTENTIOMETER_STATUS) {
             mvwprintw(status_window, 2, 5, "Potentiometer: %s", "On ");
