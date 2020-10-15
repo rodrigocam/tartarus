@@ -162,7 +162,7 @@ void* lcd_thread(void* arg) {
     LCD* lcd = (LCD*)arg;
     
     while(RUNNING) {
-        lcd->write(INTERNAL_TEMPERATURE, AMBIENT_TEMPERATURE, POTENTIOMETER_REFERENCE);
+        lcd->write(INTERNAL_TEMPERATURE, AMBIENT_TEMPERATURE, REFERENCE_TEMPERATURE);
         sleep(2);
     }
     
